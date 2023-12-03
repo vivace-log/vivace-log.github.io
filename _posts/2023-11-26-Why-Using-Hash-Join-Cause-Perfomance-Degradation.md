@@ -7,7 +7,7 @@
 그렇더라도 문제는 해결해야겠죠.  
 프로시저에 작성된 SQL 구문를 하나하나 실행시키며 문제를 일으키는 SQL 구문을 몇 개 찾아낼 수 있었습니다.  
 
-![Figure 1. Execution Failure.png](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Execution Failure.png)
+![Figure 1. Execution Failure.png](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Execution_Failure.png)
 
 겉보기에는 문제가 없어보이는 SQL 구문인데 어떤 부분이 문제를 일으킨걸까요?  
 우선 MERGE문 자체에는 이상이 없는 것으로 보입니다.  
@@ -25,7 +25,7 @@
   
 SQL 구문은 다음과 같은 절차를 통해 실행됩니다.  
   
-![Figure 2. SQL Processing](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/SQL Processing.png)
+![Figure 2. SQL Processing](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/SQL_Processing.png)
 
 1. SQL Parsing
 2. Optimization  
@@ -52,7 +52,7 @@ SQL 구문 중 구문 수행 시 해당 SQL의 수행으로 발생하는 리소�
 Oracle Database는 모든 SQL 구문을 해싱 알고리즘을 통해 해시화하여 해싱된 모든 값을 Shared Pool의 Shared SQL Area에 저장합니다.
 이렇게 저장된 SQL ID는 동일 버전의 DB라면 서로 다른 인스턴스에서도 해당 ID를 동일하게 사용됩니다.  
 
-![Figure 4. Shared Pool Check](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Shared Pool Check.png)
+![Figure 4. Shared Pool Check](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Shared_Pool_Check.png)
 
 Shared Pool Check의 결과는 Shared SQL Area의 타겟이 되는 SQL ID의 유무에 따라 다음과 같이 나뉘게 됩니다.
 
@@ -72,7 +72,7 @@ Optimzer는 SQL 구문에 대하여 최적의 접근 방식과 목표를 계획�
 - CBO Statistics in the Data Dictionary  
 - **Optimizer SQL Hints for Changing the CBO goal**  
 
-![Figure 5. Baby Optimizer](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Baby Optimizer.png)
+![Figure 5. Baby Optimizer](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Baby_Optimizer.png)
 
 드디어 최종적으로 알아보고자 하는 SQL Hint가 CBO라는 Optimizer의 고려 사항 중 하나라는 것을 알게 되었습니다. 
 Optimizer에 대해 조금 더 구체적으로 알아볼까요?
@@ -108,7 +108,7 @@ RBO는 15개의 정해진 우선 순위 규칙에 따라 접근 경로를 설정
 후에 살펴보겠지만 Hash Join에 대해 간략하게 설명하자면, Hash Join은 두 테이블 간의 조인 시 두 테이블 중 선택된 하나의 테이블을 해시 영역에 올리고 남은 하나의 테이블을 스캔하며 해시 테이블과 조인하는 조인 방식입니다.
 이때, Hash Join이 수행되기 위해서는 CBO의 사용이 요구되어집니다.
 
-![Figure 6. Features that require CBO](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Features that reauire CBO.png)
+![Figure 6. Features that require CBO](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Features_that_reauire_CBO.png)
 
 점점 문제의 SQL 구문 및 Hash Join에 관해 가까워지고 있는 기분이 듭니다.  
 문제를 분석하기 위한 마지막 단계인 Optimizer의 실행 계획 선택 과정에 대해 조금 더 알아보도록 합시다.
@@ -126,12 +126,12 @@ CBO는 다음과 같은 절차로 가장 효율적인 실행 계획을 선택합
 원본 SQL 문을 더 낮은 비용으로 의미상 동일한 SQL 문으로 다시 작성하는 것이 유리한지 여부를 결정합니다.
 OR 확장, 뷰 머징, 서브쿼리 중첩 해제 등의 방법을 사용하여 쿼리를 재작성합니다.
   
-![Figure 7. Transformed Query](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Transformed Query.png)
+![Figure 7. Transformed Query](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Transformed_Query.png)
 
 #### 2. Estimator  
 주어진 SQL 구문에 대하여 세 가지의 측정값(Selectivity, Cardinality, Cost)을 사용하여 실행 계획의 전체 비용을 결정합니다.  
 
-![Figure 8. Selectivity, Cardinality, Cost](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Selectivity, Cardinality, Cost.png)
+![Figure 8. Selectivity, Cardinality, Cost](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Selectivity_Cardinality_Cost.png)
 
 - Selectivity
 테이블의 행 집합에서 특정 수의 행을 필터링하여 조건을 통과하는 행 수에 관한 값  
@@ -168,7 +168,7 @@ Hash Join의 개념을 수행 절차를 통해 순서대로 살펴보면,
 1. Build Table을 풀 스캔한 후 각 행의 조인 컬럼을 해시 함수를 통해 해시 값으로 만들어 PGA 영역에 해시 테이블을 만듭니다.
 #todo *Figuire 9. Hashing Build Table which is in PGA*
 2. Probe Table을 최소 비용이 사용되는 방식으로 풀 스캔한 후 검색된 각 행에 대해 다음 조인 절차를 수행합니다.
-![Figure 10. Hash Join](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Hash Join.png)
+![Figure 10. Hash Join](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Hash_Join.png)
 3. Probe Table의 동일한 조인 컬럼에 해시 함수를 사용합니다. 
 4. 해시 테이블에 동일한 값을 가지는 조인 컬럼 슬롯에 대하여 동일한 행이 존재하는지 확인합니다.
 5. 두 개 이상 존재한다면 linked된 각 행을 체크하여 동일한 행을 찾아내고, 하나만 존재한다면 찾은 행을 전달합니다.
@@ -196,7 +196,7 @@ ON (tab1.serial_number = tab2.serial_number AND tab1.identify_code = tab2. ident
 WHEN MATCHED THEN
 	UPDATE SET tab1.hiredate = tab2.hiredate;
 ```
-![Figure 11. Issue SQL and Result Plan](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Issue SQL and Result Plan.png)
+![Figure 11. Issue SQL and Result Plan](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Issue_SQL_and_Result_Plan.png)
 
 실행 계획의 ID를 기준으로 실행 순서대로 살펴보겠습니다. (이해하기 쉽게 설명 중 각 테이블의 alias도 함께 작성했습니다.)
 
@@ -231,7 +231,7 @@ ON (tab1.serial_number = tab2.serial_number AND tab1.identify_code = tab2. ident
 WHEN MATCHED THEN
 	UPDATE SET tab1.hiredate = tab2.hiredate;
 ```
-![Figure 12. Fix Issue SQL and Result Plan](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Fix Issue SQL and Result Plan.png)
+![Figure 12. Fix Issue SQL and Result Plan](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Fix_Issue_SQL_and_Result_Plan.png)
 
 위에서 분석해 본 Hash Join Hint를 사용한 SQL 구문의 실행 계획과 다른 점은 
 맨 마지막 프로세싱 과정인 Hash Join이 두 번의 Nested Loop Join으로 바뀌었다는 것 말고는 없습니다.
