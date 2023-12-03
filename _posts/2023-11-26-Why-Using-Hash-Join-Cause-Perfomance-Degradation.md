@@ -188,7 +188,7 @@ MERGE /*+ USE_HASH(tab1 tab2)*/
 INTO emp tab1
 USING (
 	SELECT b.identify_code, b.serial_number, a.hiredate
-	FROM cnd a, emp b
+	FROM emp a, cnd b
 	WHERE a.serial_number = b.serial_number
 	AND b.serial_number IN (SELECT serial_number FROM pass_list)
 ) tab2
@@ -202,11 +202,11 @@ WHEN MATCHED THEN
 
 1. ID 8: 인덱스를 이용하여 pass_list의 serial_number 조회  
 2. ID 7: 구한 serial_number를 중복 제거 정렬  
-3. ID 9: 앞서 구한 결과와 일치하는 emp b의 serial_number 조회  
-4. ID 10: 9번의 조회 결과를 이용하여 emp의 실제 데이터에 액세스  
+3. ID 9: 앞서 구한 결과와 일치하는 cnd b의 serial_number 조회  
+4. ID 10: 9번의 조회 결과를 이용하여 cnd 테이블의 실제 데이터에 액세스  
 5. ID 6, 11, 5: Query Transformer가 SQL 구문을 변경했을 것으로 예상되어 정확한 조인 조건을 알 수 없으나  
-인라인 뷰를 완성하기 위헤 Nested Loop 조인을 수행하고, Outer Table인 cnd a에 대해 인덱스 풀 스캔
-6. ID 4: 필터링 된 emp b를 Build Table로 설정하여 b.serial_number 조인 키를 해시화하고 PGA의 해시 태이블에 저장한 후,  
+인라인 뷰를 완성하기 위헤 Nested Loop 조인을 수행하고, Outer Table인 emp a에 대해 인덱스 풀 스캔
+6. ID 4: 필터링 된 cnd b를 Build Table로 설정하여 b.serial_number 조인 키를 해시화하고 PGA의 해시 태이블에 저장한 후,  
 cnd a를 Probe Table로 설정하여 해시 함수를 통해 해시 테이블과 조인  
 7. ID 12: Hash Join의 드라이빙 테이블로 선정된 emp tab1을 풀 액세스함  
 8. ID 3: 풀 액세스 한 emp tab1의 데이터를 tab1.serial_number 컬럼과 tab1.identify_code를 조인 키로 해시 테이블에 올린 후
