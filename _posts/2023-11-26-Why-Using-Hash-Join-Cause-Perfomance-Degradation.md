@@ -166,7 +166,7 @@ Hash Join은 주로 대용량 테이블 조인 시 사용합니다.
 Hash Join의 개념을 수행 절차를 통해 순서대로 살펴보면,
 
 1. Build Table을 풀 스캔한 후 각 행의 조인 컬럼을 해시 함수를 통해 해시 값으로 만들어 PGA 영역에 해시 테이블을 만듭니다.
-#todo *Figuire 9. Hashing Build Table which is in PGA*
+![Figuire 9. Hashing Build Table which is in PGA](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Hashing_Build_Table_which_is_in_PGA.png)
 2. Probe Table을 최소 비용이 사용되는 방식으로 풀 스캔한 후 검색된 각 행에 대해 다음 조인 절차를 수행합니다.
 ![Figure 10. Hash Join](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Hash_Join.png)
 3. Probe Table의 동일한 조인 컬럼에 해시 함수를 사용합니다. 
