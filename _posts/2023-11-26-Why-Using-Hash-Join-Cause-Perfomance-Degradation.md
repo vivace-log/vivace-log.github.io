@@ -2,8 +2,8 @@
 title: Oracle Optimizer 관점에서 알아보는 Hash Join Hint의 쿼리 성능 저하 원인
 author: MNIAR
 date: 2023-12-04 22:00:00 +0900
-categories: [SQL, Procedure, Optimizer, Hash Join]
-tags: [SQL, Procedure, Optimizer, Hash Join, Join Hint]
+categories: [Database, SQL, Procedure, Optimizer, Hash Join]
+tags: [Hash Join, Optimizer, SQL, Procedure, Oracle, Database]
 render_with_liquid: false
 ---
 
@@ -45,8 +45,6 @@ SQL 구문은 다음과 같은 절차를 통해 실행됩니다.
 ## 2-1. SQL Parsing  
 
 Parsing 단계에서는 사용자의 SQL 구문의 실행이 요청되면, SQL 구문을 분석하고, 커서를 열어 확인된 구문을 저장하고 해당 구문의 리소스 스킵을 결정하기 위해 parse call이 발생합니다. 
-
-![Figure 3. Parser](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Parser.png)
 
 SQL Parsing에서는 세 가지의 구문 확인이 진행됩니다.
 
@@ -131,6 +129,8 @@ CBO는 다음과 같은 절차로 가장 효율적인 실행 계획을 선택합
   
 앞서 설명한 절차를 바탕으로 CBO의 구성요소에 대해 알아보겠습니다.  
 
+![Figure 3. Parser](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Parser.png)
+
 #### 1. Query Transformer
 원본 SQL 문을 더 낮은 비용으로 의미상 동일한 SQL 문으로 다시 작성하는 것이 유리한지 여부를 결정합니다.
 OR 확장, 뷰 머징, 서브쿼리 중첩 해제 등의 방법을 사용하여 쿼리를 재작성합니다.
@@ -168,8 +168,7 @@ Cardinality 및 Data Dictionary의 통계(I/O, CPU, memory와 같은 컴퓨터 �
 마지막으로 SQL 문제의 주요 원인인 Hash Join이 무엇인가에 대해까지 마지막으로 알아보고 실행 계획을 살펴보도록 하겠습니다.
   
 ## 3-1. Hash Join  
-Hash Join은 주로 대용량 테이블 조인 시 사용합니다.
-두 테이블 중 더 작은 테이블(Build Table)을 해시 테이블로 만들어 메모리에 올린 후, 더 큰 테이블(Probe Table)을 해시 테이블과 조인 컬럼을 기준으로 매핑시키는 조인 방식입니다.
+Hash Join은 두 테이블 중 더 작은 테이블(Build Table)을 해시 테이블로 만들어 메모리에 올린 후, 더 큰 테이블(Probe Table)을 해시 테이블과 조인 컬럼을 기준으로 매핑시키는 조인 방식입니다.
 이 과정에서 해시 테이블은 PGA 영역에 올라가 latching 없이 두 테이블 간 데이터 액세스 및 조인이 가능하므로 대용량 테이블 조인에서 강점을 가집니다.
 
 <img src="/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Hash_Join.png" width="630" height="399"/>
