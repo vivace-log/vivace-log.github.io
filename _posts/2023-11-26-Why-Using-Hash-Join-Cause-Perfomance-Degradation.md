@@ -1,3 +1,12 @@
+---
+title: Oracle Optimizer 관점에서 알아보는 Hash Join Hint의 쿼리 성능 저하 원인
+author: MNIAR
+date: 2023-12-04 22:00:00 +0900
+categories: [SQL, Procedure, Optimizer, Hash Join]
+tags: [SQL, Procedure, Optimizer, Hash Join, Join Hint]
+render_with_liquid: false
+---
+
 # 1. Preface
 
 *(프로시저는 실제로 동작하지만 프로시저 동작 환경은 실제가 아닌 설정된 가상의 환경입니다.)*   
