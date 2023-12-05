@@ -2,7 +2,7 @@
 title: Oracle Optimizer 관점에서 알아보는 Hash Join의 SQL 성능 저하 원인
 author: MNIAR
 date: 2023-12-04 22:00:00 +0900
-categories: [Database, SQL, Procedure, Optimizer, Hash Join]
+categories: [Hash Join, Optimizer, SQl, Database]
 tags: [Hash Join, Optimizer, SQL, Procedure, Oracle, Database]
 render_with_liquid: false
 ---
@@ -22,7 +22,7 @@ render_with_liquid: false
 MERGE /*+ USE_HASH(tab1 tab2)*/
 INTO emp tab1
 USING (
-	SELECT b.identify_code, b.serial_number, a.hiredate
+	SELECT a.identify_code, a.serial_number, b.hiredate
 	FROM emp a, cnd b
 	WHERE a.serial_number = b.serial_number
 	AND b.serial_number IN (SELECT serial_number FROM pass_list)
@@ -35,7 +35,7 @@ WHEN MATCHED THEN
 겉보기에는 문제가 없어보이는 SQL 구문인데 어떤 부분이 문제를 일으킨걸까요?  
 우선 MERGE문 자체에는 이상이 없는 것으로 보입니다.  
   
-처음보는 `/+ USE_HASH(tab1, tab2) /` 라는 구문이 문제를 일으킨걸까요?  
+처음보는 `/*+ USE_HASH(tab1, tab2) */` 라는 구문이 문제를 일으킨걸까요?  
 해당 구문을 지우고 SQL 구문을 실행시켜보니 이전과는 다르게 단숨에 쿼리가 실행 완료되었습니다.  
 
 초면인 *USE_HASH* 구문을 구글링 해보니 Oracle SQL 튜닝 기법 중 하나인 Hash Join Hint라고 합니다.
@@ -47,7 +47,7 @@ WHEN MATCHED THEN
 # 2. SQL Processing
   
 SQL 구문은 다음과 같은 절차를 통해 실행됩니다.  
-  
+
 ![Figure 2. SQL Processing](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/SQL_Processing.png)
 
 1. SQL Parsing
@@ -59,6 +59,7 @@ SQL 구문은 다음과 같은 절차를 통해 실행됩니다.
 ## 2-1. SQL Parsing  
 
 Parsing 단계에서는 사용자의 SQL 구문의 실행이 요청되면, SQL 구문을 분석하고, 커서를 열어 확인된 구문을 저장하고 해당 구문의 리소스 스킵을 결정하기 위해 parse call이 발생합니다. 
+
 
 SQL Parsing에서는 세 가지의 구문 확인이 진행됩니다.
 
@@ -88,17 +89,17 @@ Shared Pool Check의 결과는 Shared SQL Area의 타겟이 되는 SQL ID의 유
 
 Oracle Optimizer는 SQL 구조, 사용 가능한 통계 정보, 모든 관련 최적화 프로그램 및 실행 기능을 기반으로 SQL 문에 대해 가장 효율적인 실행 계획을 결정합니다.  
   
-Optimzer는 SQL 구문에 대하여 최적의 접근 방식과 목표를 계획할 때 다음 세 가지 사항을 고려합니다.  
+Optimizer는 SQL 구문에 대하여 최적의 접근 방식과 목표를 계획할 때 다음 세 가지 사항을 고려합니다.  
 - Initialization Parameter
 - CBO Statistics in the Data Dictionary  
 - **Optimizer SQL Hints for Changing the CBO goal**  
 
 <img src="/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Baby_Optimizer.png" width="300" height="300"/>
-
+  
 드디어 최종적으로 알아보고자 하는 SQL Hint가 CBO라는 Optimizer의 고려 사항 중 하나라는 것을 알게 되었습니다. 
 Optimizer에 대해 조금 더 구체적으로 알아볼까요?
 
-#### Initialization Prameter
+#### Initialization Parameter
 Initialization Parameter는 Optimizer 동작의 다양한 측면에 영향을 주는 초기화 매개변수입니다.  
 초기화 매개변수 중 특히 *OPTIMIZER_MODE*라는 매개변수는 말 그대로 Optimizer가 어떤 방식을 채택할 것인지를 선택합니다.  
 
@@ -140,10 +141,10 @@ CBO는 다음과 같은 절차로 가장 효율적인 실행 계획을 선택합
 1. 사용 가능한 액세스 경로와 힌트를 기반으로 잠재적인 계획 집합을 생성  
 2. Data Dictionary의 통계(I/O, CPU, memory와 같은 컴퓨터 리소스)를 기반으로 액세스 경로 및 조인 순서의 비용을 계산  
 3. 계획의 비용을 비교하고 가장 낮은 비용의 계획을 선택  
-  
-앞서 설명한 절차를 바탕으로 CBO의 구성요소에 대해 알아보겠습니다.  
 
 ![Figure 3. Parser](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Parser.png)
+  
+앞서 설명한 절차를 바탕으로 CBO의 구성요소에 대해 알아보겠습니다.  
 
 #### 1. Query Transformer
 원본 SQL 문을 더 낮은 비용으로 의미상 동일한 SQL 문으로 다시 작성하는 것이 유리한지 여부를 결정합니다.
@@ -174,8 +175,6 @@ Cardinality 및 Data Dictionary의 통계(I/O, CPU, memory와 같은 컴퓨터 �
 앞선 과정을 모두 거쳐 선정된 실행 계획을 받아 실제로 실행 가능한 코드의 형태로 다시 포맷팅하는 작업을 수행합니다.
 수행 가능한 형태로 다시 생성된 계획은 각 단계별로 수행되며, 각 단계는 row set을 반환하 이는 후에 SQL plan을 살펴볼 때 나오는 row source tree와 관련이 있습니다.
   
-  
-  
 # 3. Explain Plan  
   
 드디어 앞서 살펴봤던 Hash join이 문제를 발생시킨 SQL 구문의 실행 계획을 해석하기 위한 기초 지식을 쌓았습니다.  
@@ -183,6 +182,7 @@ Cardinality 및 Data Dictionary의 통계(I/O, CPU, memory와 같은 컴퓨터 �
   
 ## 3-1. Hash Join  
 Hash Join은 두 테이블 중 더 작은 테이블(Build Table)을 해시 테이블로 만들어 메모리에 올린 후, 더 큰 테이블(Probe Table)을 해시 테이블과 조인 컬럼을 기준으로 매핑시키는 조인 방식입니다.
+
 이 과정에서 해시 테이블은 PGA 영역에 올라가 latching 없이 두 테이블 간 데이터 액세스 및 조인이 가능하므로 대용량 테이블 조인에서 강점을 가집니다.
 
 <img src="/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Hash_Join.png" width="630" height="399"/>
@@ -190,7 +190,9 @@ Hash Join은 두 테이블 중 더 작은 테이블(Build Table)을 해시 테�
 Hash Join의 개념을 수행 절차를 통해 순서대로 살펴보면,
 
 1. Build Table을 풀 스캔한 후 각 행의 조인 컬럼을 해시 함수를 통해 해시 값으로 만들어 PGA 영역에 해시 테이블을 만듭니다.
+
 <img src="/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Hashing_Build_Table_which_is_in_PGA.png" width="759" height="410.25"/>
+
 2. Probe Table을 최소 비용이 사용되는 방식으로 풀 스캔한 후 검색된 각 행에 대해 다음 조인 절차를 수행합니다.
 3. Probe Table의 동일한 조인 컬럼에 해시 함수를 사용합니다. 
 4. 해시 테이블에 동일한 값을 가지는 조인 컬럼 슬롯에 대하여 동일한 행이 존재하는지 확인합니다.
@@ -210,15 +212,16 @@ Hash Join Hint가 어떤 문제를 일으켰는지 실행 계획을 하나씩 �
 MERGE /*+ USE_HASH(tab1 tab2)*/
 INTO emp tab1
 USING (
-	SELECT b.identify_code, b.serial_number, a.hiredate
+	SELECT a.identify_code, a.serial_number, b.hiredate
 	FROM emp a, cnd b
 	WHERE a.serial_number = b.serial_number
 	AND b.serial_number IN (SELECT serial_number FROM pass_list)
 ) tab2
-ON (tab1.serial_number = tab2.serial_number AND tab1.identify_code = tab2. identify_code)
+ON (tab1.serial_number = tab2.serial_number AND tab1.identify_code = tab2.identify_code)
 WHEN MATCHED THEN
 	UPDATE SET tab1.hiredate = tab2.hiredate;
 ```
+
 ![Figure 11. Issue SQL and Result Plan](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Issue_SQL_and_Result_Plan.png)
 
 실행 계획의 ID를 기준으로 실행 순서대로 살펴보겠습니다. (이해하기 쉽게 설명 중 각 테이블의 alias도 함께 작성했습니다.)
@@ -245,7 +248,7 @@ Operation 중 가장 높은 Cost를 최종 Cost로 측정하므로 3번 ID의 Ha
 MERGE
 INTO emp tab1
 USING (
-	SELECT b.identify_code, b.serial_number, a.hiredate
+	SELECT a.identify_code, a.serial_number, b.hiredate
 	FROM cnd a, emp b
 	WHERE a.serial_number = b.serial_number
 	AND b.serial_number IN (SELECT serial_number FROM pass_list)
@@ -254,6 +257,7 @@ ON (tab1.serial_number = tab2.serial_number AND tab1.identify_code = tab2. ident
 WHEN MATCHED THEN
 	UPDATE SET tab1.hiredate = tab2.hiredate;
 ```
+
 ![Figure 12. Fix Issue SQL and Result Plan](/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Fix_Issue_SQL_and_Result_Plan.png)
 
 위에서 분석해 본 Hash Join Hint를 사용한 SQL 구문의 실행 계획과 다른 점은 
@@ -285,6 +289,7 @@ AND tab1.identify_code = tab2. identify_code;
 # 4. Conclusion
 
 실행 계획을 분석한 결과 Hash Join Hint가 SQL 구문에서 문제를 일으킨 이유를 이렇게 정리해볼 수 있을 것 같습니다.
+
 1. 해시 조인 사용을 위한 Build Table 및 Probe Table이 적절하게 선정되지 않았다.
 2. 조인을 수행하는 두 테이블 모두 해시 영역에 올리기에는 데이터가 너무 많아 디스크의 임시 공간을 사용하게 되면서 성능 저하가 발생하였다.
 
@@ -293,6 +298,5 @@ AND tab1.identify_code = tab2. identify_code;
 > Join Hint를 사용하기 이전에 테이블 구조 및 Optimizer의 실행 계획에 대해 정확하게 분석한 후에 생각한 의도대로 실행 계획이 세워지지 않았다면 Join Hint를 통해 실행 계획을 의도에 맞게 안내하자.
 
 <br>
-
 지금까지 Oracle에서 제공하는 SQL Tuning Guide 및 기타 유용한 정보들을 찾아보며 개인적으로 생각하기에 가장 가까운 해석을 작성해봤습니다.
 성능 저하 원인에 대해 분석하기 위해 주어진 DB 권한도 충분치 않았고, Oracle DB에 대한 지식이 부족한 상태로 원인을 분석하였기 때문에 정확한 분석 결과는 아닐 수 있지만 SQL Processing, Optimizer 및 SQL 실행 계획의 흐름을 알아가는데 이 글이 도움이 되기를 바랍니다.
