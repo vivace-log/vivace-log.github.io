@@ -12,11 +12,25 @@ render_with_liquid: false
 *(프로시저는 실제로 동작하지만 프로시저 동작 환경은 실제가 아닌 설정된 가상의 환경입니다.)*   
 
 면접자 중 합격자를 정식 회사원으로 데이터베이스에 등록하기 위하여 작성한 프로시저를 실행하여 검사하던 중 프로시저의 동작이 완료되지 않고 멈춘 상태로 어떤 오류인지, 어디서 발생하는 오류인지 확인할 수도 없는 상황이 되어버려 곤란한 상황에 놓이게 되었습니다.  
-  
+
+<img src="/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Execution_Failure.png" width="457" height="341.5"/>
+
 그렇더라도 문제는 해결해야겠죠.  
 프로시저에 작성된 SQL 구문를 하나하나 실행시키며 문제를 일으키는 SQL 구문을 몇 개 찾아낼 수 있었습니다.  
 
-<img src="/assets/img/2023-11-26-Why-Using-Hash-Join-Cause-Perfomance-Degradation/Execution_Failure.png" width="457" height="341.5"/>
+```sql
+MERGE /*+ USE_HASH(tab1 tab2)*/
+INTO emp tab1
+USING (
+	SELECT b.identify_code, b.serial_number, a.hiredate
+	FROM emp a, cnd b
+	WHERE a.serial_number = b.serial_number
+	AND b.serial_number IN (SELECT serial_number FROM pass_list)
+) tab2
+ON (tab1.serial_number = tab2.serial_number AND tab1.identify_code = tab2. identify_code)
+WHEN MATCHED THEN
+	UPDATE SET tab1.hiredate = tab2.hiredate;
+```
 
 겉보기에는 문제가 없어보이는 SQL 구문인데 어떤 부분이 문제를 일으킨걸까요?  
 우선 MERGE문 자체에는 이상이 없는 것으로 보입니다.  
