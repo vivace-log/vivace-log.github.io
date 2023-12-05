@@ -1,5 +1,5 @@
 ---
-title: Oracle Optimizer 관점에서 알아보는 Hash Join Hint의 쿼리 성능 저하 원인
+title: Oracle Optimizer 관점에서 알아보는 Hash Join의 SQL 성능 저하 원인
 author: MNIAR
 date: 2023-12-04 22:00:00 +0900
 categories: [Database, SQL, Procedure, Optimizer, Hash Join]
